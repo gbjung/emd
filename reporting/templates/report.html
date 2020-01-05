@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+  <body>
+    <h1>Report</h1>
+    <div>
+      <form method="post">{% csrf_token %}
+      {{ form.as_p }}
+      <input type="submit" value="Create Report">
+      </form>
+    </div>
+  </body
+</html>
