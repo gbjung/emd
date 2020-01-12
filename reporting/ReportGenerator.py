@@ -16,6 +16,7 @@ class ReportGenerator:
     def __init__(self):
         sfc = SalesforceClient()
         self.sf = sfc.sf
+        self.use_activities = True
         self.incumbent_map = {}
         double_border_side = Side(border_style="thin")
         self.square_border = Border(left=double_border_side,
@@ -57,11 +58,14 @@ class ReportGenerator:
                      'Place_of_Performance__c', 'NAICS_Code__c', 'Contract_End_Date__c',
                      'Eligible_to_Bid__c', 'Projected_Award_Date__c', 'Requirements__c',
                      'Solicitation_Number__c'])
-        op_type_fields = (', (select Name, Update__c, Update_Type__c, CreatedDate from Opportunity_Updates__r'+
-                          ' where (CreatedDate >= {}))'.format(two_weeks_later))
+        if self.use_activities:
+            extra_type_fields = (', (select Subject, Description, Status, LastModifiedBy.Name, LastModifiedDate from Tasks')
+        else:
+            extra_type_fields = (', (select Name, Update__c, Update_Type__c, CreatedDate from Opportunity_Updates__r')
+        extra_type_fields += ' where (CreatedDate >= {}))'.format(two_weeks_later)
         where = "(StageName not in ('Monitoring', 'SP 7 - RFP Submitted', 'No Go') and AccountId ='{}' and CloseDate >= {})".format(account_id, str(date.today()))
         order = " order by CloseDate asc"
-        query = "SELECT " + sf_fields + op_type_fields + " FROM Opportunity WHERE " + where + order
+        query = "SELECT " + sf_fields + extra_type_fields + " FROM Opportunity WHERE " + where + order
         return self.sf.query(query)
 
     def add_opportunities(self, sheet, opportunities):
@@ -110,7 +114,6 @@ class ReportGenerator:
             sheet = workbook.copy_worksheet(original_sheet)
             sheet_name = 'Opp {}'.format(row)
             sheet.title = sheet_name
-            print("processing "+ sheet_name)
             self.format_op(sheet, opp, account_name)
             row += 1
             workbook.save(filename=file_name)
@@ -138,6 +141,7 @@ class ReportGenerator:
         return stores
 
     def format_op_updates(self, sheet, opp):
+        # V1 used op updates, keep around incase they wanna use it l8r
         updates = opp['Opportunity_Updates__r']
 
         if not updates:
@@ -186,7 +190,30 @@ class ReportGenerator:
         sheet['D12'] = self.find_incumbent(opp['Incumbent__c']) # Incumbent
         sheet['D13'] = opp['Contract_End_Date__c'] # Contract End Date
         sheet['D14'] = opp['Eligible_to_Bid__c'] # Eligible to Bid
-        self.format_op_updates(sheet, opp)
+        if self.use_activities:
+            self.format_op_activites(sheet, opp)
+        else:
+            self.format_op_updates(sheet, opp)
+
+    def format_op_activites(self, sheet, opp):
+        activities = opp['Tasks']
+
+        if not activities:
+            return
+
+        row = 19
+        for activity in activities['records']:
+            sheet['A{}'.format(row)] = activity['Subject']
+            sheet['B{}'.format(row)] = activity['Description']
+            sheet['C{}'.format(row)] = activity['Status']
+            sheet['D{}'.format(row)] = activity['LastModifiedBy']['Name']
+            date = datetime.strptime(activity['LastModifiedDate'][:10],
+                                     '%Y-%m-%d').strftime('%-m/%-d/%Y')
+            sheet['E{}'.format(row)] = date
+            for col in ['A','B','C','D', 'E']:
+                sheet['{}{}'.format(col,row)].border = self.square_border
+            row += 1
+
 
     def generate_report(self, account_id):
         account_info = self.sf.Account.get(account_id)
