@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'accounts',
     'contacts',
     'salesforce',
-    'reporting'
+    'reporting',
+    'usaspending'
 ]
 
 MIDDLEWARE = [
