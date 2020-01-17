@@ -1,5 +1,6 @@
 import time
 import string
+import copy
 from bs4 import BeautifulSoup
 from operator import itemgetter
 from django.conf import settings
@@ -59,10 +60,12 @@ class ReportGenerator:
                      'Eligible_to_Bid__c', 'Projected_Award_Date__c', 'Requirements__c',
                      'Solicitation_Number__c'])
         if self.use_activities:
-            extra_type_fields = (', (select Subject, Description, Status, LastModifiedBy.Name, LastModifiedDate from Tasks')
+            extra_type_fields = (', (select Subject, Description, Status, LastModifiedDate from Tasks')
         else:
             extra_type_fields = (', (select Name, Update__c, Update_Type__c, CreatedDate from Opportunity_Updates__r')
         extra_type_fields += ' where (CreatedDate >= {}))'.format(two_weeks_later)
+        teaming_partners_query = ', (select Name, Justification__c, Status__c, Point_of_Contact__c from Potential_Teaming_Partners__r)'
+        extra_type_fields += teaming_partners_query
         where = "(StageName not in ('Monitoring', 'SP 7 - RFP Submitted', 'No Go') and AccountId ='{}' and CloseDate >= {})".format(account_id, str(date.today()))
         order = " order by CloseDate asc"
         query = "SELECT " + sf_fields + extra_type_fields + " FROM Opportunity WHERE " + where + order
@@ -83,7 +86,7 @@ class ReportGenerator:
             sheet['H{}'.format(row)].number_format = '"$"#,##0.00'
             sheet['I{}'.format(row)] = op['Client_Role__c']
             sheet['J{}'.format(row)] = self.find_incumbent(op['Incumbent__c'])
-            sheet['M{}'.format(row)] = op['CloseDate']
+            sheet['L{}'.format(row)] = op['CloseDate']
             for col in string.ascii_uppercase[:12]:
                 sheet['{}{}'.format(col,row)].border = self.square_border
             row += 1
@@ -142,13 +145,13 @@ class ReportGenerator:
 
     def format_op_updates(self, sheet, opp):
         # V1 used op updates, keep around incase they wanna use it l8r
+        row = 18
         updates = opp['Opportunity_Updates__r']
 
         if not updates:
-            return
+            return row
 
         stores = self.seperate_update_types(updates)
-        row = 18
         for date, updates in sorted(stores.items()):
             sheet.merge_cells('A{}:D{}'.format(row, row))
             sheet['A{}'.format(row)] = date
@@ -166,6 +169,7 @@ class ReportGenerator:
                 for col in ['B','C','D']:
                     sheet['{}{}'.format(col,row)].border = self.square_border
                 row += 1
+        return row
 
     def format_op(self, sheet, opp, account_name):
         sheet['B2'] = opp['Name'] #Opportunity Title
@@ -191,36 +195,79 @@ class ReportGenerator:
         sheet['D13'] = opp['Contract_End_Date__c'] # Contract End Date
         sheet['D14'] = opp['Eligible_to_Bid__c'] # Eligible to Bid
         if self.use_activities:
-            self.format_op_activites(sheet, opp)
+            row = self.format_op_activites(sheet, opp)
         else:
-            self.format_op_updates(sheet, opp)
+            row = self.format_op_updates(sheet, opp)
+        self.format_teaming_partners(sheet, opp, row)
 
-    def format_op_activites(self, sheet, opp):
-        activities = opp['Tasks']
+    def format_teaming_partners(self, sheet, opp, row):
+        row = self.format_teaming_partners_headers(sheet, opp, row)
+        partners = opp['Potential_Teaming_Partners__r']
 
-        if not activities:
+        if not partners:
             return
 
-        row = 19
-        for activity in activities['records']:
-            sheet['A{}'.format(row)] = activity['Subject']
-            sheet['B{}'.format(row)] = activity['Description']
-            sheet['C{}'.format(row)] = activity['Status']
-            sheet['D{}'.format(row)] = activity['LastModifiedBy']['Name']
-            date = datetime.strptime(activity['LastModifiedDate'][:10],
-                                     '%Y-%m-%d').strftime('%-m/%-d/%Y')
-            sheet['E{}'.format(row)] = date
-            for col in ['A','B','C','D', 'E']:
+        for partner in partners['records']:
+            sheet['A{}'.format(row)] = partner['Name']
+            sheet['B{}'.format(row)] = BeautifulSoup(partner['Justification__c'], "html.parser").text
+            sheet['B{}'.format(row)].alignment = Alignment(wrap_text=True)
+            sheet['C{}'.format(row)] = partner['Status__c']
+            sheet['D{}'.format(row)] = self.get_POC(partner['Point_of_Contact__c'])
+            for col in ['A','B','C','D']:
                 sheet['{}{}'.format(col,row)].border = self.square_border
             row += 1
 
+    def get_POC(self, poc_id):
+        if not poc_id:
+            return None
+        account_info = self.sf.Contact.get(poc_id)
+        return account_info['Name']
+
+    def format_teaming_partners_headers(self, sheet, opp, row):
+        sheet.merge_cells('A{}:D{}'.format(row, row))
+        sheet['A{}'.format(row)] = "Potential Teaming Partners"
+        ref = sheet['A17']._style
+        sheet['A{}'.format(row)]._style = ref
+        for col in ['A','B','C','D']:
+            sheet['{}{}'.format(col,row)].border = self.square_border
+        row += 1
+        headers = [('A', 'Potential Teaming Partner'),
+                   ('B', 'Justification'),
+                   ('C', 'Status'),
+                   ('D', 'Point of Contact')]
+        ref = sheet['A2']._style
+        for col, name in headers:
+            sheet['{}{}'.format(col, row)] = name
+            sheet['{}{}'.format(col, row)]._style = ref
+        row += 1
+        return row
+
+    def format_op_activites(self, sheet, opp):
+        row = 18
+        activities = opp['Tasks']
+
+        if not activities:
+            return row
+
+        for activity in activities['records']:
+            sheet['A{}'.format(row)] = activity['Subject']
+            sheet['B{}'.format(row)] = activity['Description']
+            sheet['B{}'.format(row)].alignment = Alignment(wrap_text=True)
+            sheet['C{}'.format(row)] = activity['Status']
+            date = datetime.strptime(activity['LastModifiedDate'][:10],
+                                     '%Y-%m-%d').strftime('%-m/%-d/%Y')
+            sheet['D{}'.format(row)] = date
+            for col in ['A','B','C','D']:
+                sheet['{}{}'.format(col,row)].border = self.square_border
+            row += 1
+        return row
 
     def generate_report(self, account_id):
         account_info = self.sf.Account.get(account_id)
         account_name = account_info['Name']
         file_name = account_name.replace(" ", "") + 'Report.xlsx'
         opportunities = self.fetch_opportunities(account_id)['records']
-        workbook = load_workbook(settings.BASE_DIR + '/pipeline.xlsx')
+        workbook = load_workbook(settings.BASE_DIR + '/pipeline_updates.xlsx')
         workbook = self.format_to_excel(workbook, account_info, opportunities)
         workbook = self.add_ops(workbook, opportunities, file_name, account_name)
         return file_name
