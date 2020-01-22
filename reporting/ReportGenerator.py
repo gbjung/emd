@@ -209,12 +209,19 @@ class ReportGenerator:
 
         for partner in partners['records']:
             sheet['A{}'.format(row)] = partner['Name']
-            sheet['B{}'.format(row)] = BeautifulSoup(partner['Justification__c'], "html.parser").text
-            sheet['B{}'.format(row)].alignment = Alignment(wrap_text=True)
+            if partner['Justification__c']:
+                sheet['B{}'.format(row)] = BeautifulSoup(partner['Justification__c'], "html.parser").text.strip()
+                sheet['B{}'.format(row)].border = self.square_border
+                sheet['B{}'.format(row)].alignment = Alignment(wrap_text=True,
+                                                               vertical='center',
+                                                               horizontal='left')
             sheet['C{}'.format(row)] = partner['Status__c']
             sheet['D{}'.format(row)] = self.get_POC(partner['Point_of_Contact__c'])
-            for col in ['A','B','C','D']:
+            for col in ['A', 'C','D']:
                 sheet['{}{}'.format(col,row)].border = self.square_border
+                sheet['{}{}'.format(col,row)].alignment = Alignment(wrap_text=True,
+                                                                    vertical='center',
+                                                                    horizontal='center')
             row += 1
 
     def get_POC(self, poc_id):
@@ -239,11 +246,13 @@ class ReportGenerator:
         for col, name in headers:
             sheet['{}{}'.format(col, row)] = name
             sheet['{}{}'.format(col, row)]._style = ref
+            sheet['{}{}'.format(col, row)].alignment = Alignment(horizontal='center')
         row += 1
         return row
 
     def format_op_activites(self, sheet, opp):
-        row = 18
+        self.format_op_activites_headers(sheet, opp)
+        row = 19
         activities = opp['Tasks']
 
         if not activities:
@@ -252,15 +261,32 @@ class ReportGenerator:
         for activity in activities['records']:
             sheet['A{}'.format(row)] = activity['Subject']
             sheet['B{}'.format(row)] = activity['Description']
-            sheet['B{}'.format(row)].alignment = Alignment(wrap_text=True)
+            sheet['B{}'.format(row)].alignment = Alignment(wrap_text=True,
+                                                           vertical='center',
+                                                           horizontal='left')
             sheet['C{}'.format(row)] = activity['Status']
             date = datetime.strptime(activity['LastModifiedDate'][:10],
                                      '%Y-%m-%d').strftime('%-m/%-d/%Y')
             sheet['D{}'.format(row)] = date
-            for col in ['A','B','C','D']:
+            for col in ['A','C','D']:
                 sheet['{}{}'.format(col,row)].border = self.square_border
+                sheet['{}{}'.format(col,row)].alignment = Alignment(wrap_text=True,
+                                                                    vertical='center',
+                                                                    horizontal='center')
             row += 1
         return row
+
+    def format_op_activites_headers(self, sheet, opp):
+        row = 18
+        headers = [('A', 'Update'),
+                   ('B', 'Details'),
+                   ('C', 'Status'),
+                   ('D', 'Due Date')]
+        ref = sheet['A2']._style
+        for col, name in headers:
+            sheet['{}{}'.format(col, row)] = name
+            sheet['{}{}'.format(col, row)]._style = ref
+            sheet['{}{}'.format(col, row)].alignment = Alignment(horizontal='center')
 
     def generate_report(self, account_id):
         account_info = self.sf.Account.get(account_id)
