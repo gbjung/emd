@@ -30,7 +30,7 @@ class USASpendingReporter:
         fiscal_years = [year for year in range(fiscal_year-2, fiscal_year+1)]
         awards = {}
         for year in fiscal_years:
-            awards[year] = {}
+            awards[year] = {"Year Total": 0}
 
         spending_info = self.get_spending_info(duns_id, fiscal_years, awards)
         if not spending_info:
@@ -42,8 +42,11 @@ class USASpendingReporter:
     def to_dollars(self, spending_dict):
         for fiscal_year in spending_dict:
             for agency in spending_dict[fiscal_year]:
-                for sub_agency in spending_dict[fiscal_year][agency]:
-                    spending_dict[fiscal_year][agency][sub_agency] = '${:,.2f}'.format(spending_dict[fiscal_year][agency][sub_agency])
+                if agency == "Year Total":
+                    spending_dict[fiscal_year][agency] = '${:,.2f}'.format(spending_dict[fiscal_year][agency])
+                else:
+                    for sub_agency in spending_dict[fiscal_year][agency]:
+                        spending_dict[fiscal_year][agency][sub_agency] = '${:,.2f}'.format(spending_dict[fiscal_year][agency][sub_agency])
         return spending_dict
 
     def get_spending_info(self, duns_id, fiscal_years, awards, page=1):
@@ -119,4 +122,5 @@ class USASpendingReporter:
                                 awards[award_year][awarding_agency][sub_agency] = amount
                         else:
                             awards[award_year][awarding_agency] = {sub_agency: amount}
+                        awards[award_year]['Year Total'] += amount
         return awards
