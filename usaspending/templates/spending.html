@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+  <a href="{% url 'reporting' %}">Report Generator</a>
+  <body>
+    <h1>USA Spending</h1>
+    <p>Collects data from three fiscal years from given year.</p>
+    <div>
+      <form method="post">{% csrf_token %}
+      {{ form.as_p }}
+      <input type="submit" value="Collect Data">
+      </form>
+    </div>
+  </body
+</html>
