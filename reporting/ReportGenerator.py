@@ -89,6 +89,9 @@ class ReportGenerator:
             sheet['L{}'.format(row)] = op['CloseDate']
             for col in string.ascii_uppercase[:12]:
                 sheet['{}{}'.format(col,row)].border = self.square_border
+                sheet['{}{}'.format(col,row)].alignment = Alignment(wrap_text=True,
+                                                                    vertical='center',
+                                                                    horizontal='center')
             row += 1
             counter += 1
 
@@ -107,8 +110,32 @@ class ReportGenerator:
         sheet = workbook["Current Pipeline"]
         self.add_account_info(sheet, account_info)
         self.add_opportunities(sheet, opportunities)
+        account_updates = self.fetch_account_updates(account_info)
+        self.add_account_updates(workbook, account_updates)
 
         return workbook
+
+    def fetch_account_updates(self, account_info):
+        two_weeks_later = (date.today() - relativedelta(weeks=2, days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        query = "SELECT Subject, Description, Status, Priority, ActivityDate FROM Task WHERE (WhatId='{}' and CreatedDate >= {})".format(account_info['Id'], two_weeks_later)
+        return self.sf.query(query)
+
+
+    def add_account_updates(self, workbook, account_updates):
+        sheet = workbook["Account Updates"]
+        row = 2
+        for update in account_updates['records']:
+            sheet['A{}'.format(row)] = update['Subject']
+            sheet['B{}'.format(row)] = update['Description']
+            sheet['C{}'.format(row)] = update['Status']
+            sheet['D{}'.format(row)] = update['Priority']
+            sheet['E{}'.format(row)] = update['ActivityDate']
+            for col in ['A','B','C','D','E']:
+                sheet['{}{}'.format(col,row)].border = self.square_border
+                sheet['{}{}'.format(col,row)].alignment = Alignment(wrap_text=True,
+                                                                    vertical='center',
+                                                                    horizontal='center')
+            row += 1
 
     def add_ops(self, workbook, opportunities, file_name, account_name):
         row = 1
