@@ -26,6 +26,9 @@ class ReportGenerator:
                                 bottom=double_border_side)
 
     def fetch_events(self, account_id):
+        '''
+        Not used anymore, keep in case they want it again
+        '''
         sf_fields = "Subject, ActivityDate"
         today = date.today()
         where = "(AccountId ='{}' and ActivityDate >= {})".format(account_id, str(today))
@@ -42,6 +45,9 @@ class ReportGenerator:
         sheet['H3'] = account_info['Other_Targets__c']
 
     def add_event_info(self, sheet, events):
+        '''
+        Not used anymore, keep in case they want it again
+        '''
         if events['totalSize']:
             event = events['records'][0]
             sheet['B2'] = '{} ({})'.format(event['Subject'], event['ActivityDate'])
@@ -51,7 +57,6 @@ class ReportGenerator:
             sheet['B3'] = '{} ({})'.format(event['Subject'], event['ActivityDate'])
 
     def fetch_opportunities(self, account_id):
-        two_weeks_later = (date.today() - relativedelta(weeks=2, days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
         sf_fields = ', '.join(['Name', 'StageName', 'Competition_Type__c', 'Contract_Vehicle__c',
                      'Incumbent_BGOV_Page__c', 'Contract__c', 'Amount',
                      'Client_Role__c', 'Incumbent__c', 'CloseDate', 'Executive_Summary__c',
@@ -60,13 +65,12 @@ class ReportGenerator:
                      'Eligible_to_Bid__c', 'Projected_Award_Date__c', 'Requirements__c',
                      'Solicitation_Number__c'])
         if self.use_activities:
-            extra_type_fields = (', (select Subject, Description, Status, LastModifiedDate from Tasks')
+            extra_type_fields = (', (select Subject, Description, Status, LastModifiedDate from Tasks)')
         else:
-            extra_type_fields = (', (select Name, Update__c, Update_Type__c, CreatedDate from Opportunity_Updates__r')
-        extra_type_fields += ' where (CreatedDate >= {}))'.format(two_weeks_later)
+            extra_type_fields = (', (select Name, Update__c, Update_Type__c, CreatedDate from Opportunity_Updates__r)')
         teaming_partners_query = ', (select Name, Justification__c, Status__c, Point_of_Contact__c from Potential_Teaming_Partners__r)'
         extra_type_fields += teaming_partners_query
-        where = "(StageName not in ('Monitoring', 'SP 7 - RFP Submitted', 'No Go') and AccountId ='{}' and CloseDate >= {})".format(account_id, str(date.today()))
+        where = "(StageName not in ('Monitoring', 'SP 7 - RFP Submitted', 'No Go') and AccountId ='{}')".format(account_id)
         order = " order by CloseDate asc"
         query = "SELECT " + sf_fields + extra_type_fields + " FROM Opportunity WHERE " + where + order
         return self.sf.query(query)
