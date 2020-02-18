@@ -1,6 +1,7 @@
 import time
 import string
 import copy
+import re
 from bs4 import BeautifulSoup
 from operator import itemgetter
 from django.conf import settings
@@ -322,7 +323,7 @@ class ReportGenerator:
     def generate_report(self, account_id):
         account_info = self.sf.Account.get(account_id)
         account_name = account_info['Name']
-        file_name = account_name.replace(" ", "") + 'Report.xlsx'
+        file_name = re.sub('[^A-Za-z0-9]+', '', account_name) + 'Report.xlsx'
         opportunities = self.fetch_opportunities(account_id)['records']
         workbook = load_workbook(settings.BASE_DIR + '/pipeline_updates.xlsx')
         workbook = self.format_to_excel(workbook, account_info, opportunities)
