@@ -9,6 +9,9 @@ class Account(models.Model):
     sf_updated = models.BooleanField(default=False)
     cage_code = models.CharField(max_length=250,
                                  null=True)
+    usa_spending_updated = models.BooleanField(default=False)
+    duns_number = models.CharField(max_length=250,
+                                   null=True)
 
     def __str__(self):
         return self.account_name
