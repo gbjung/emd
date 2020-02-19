@@ -28,12 +28,11 @@ class SalesforceClient:
     def sync_accounts(self, raw_accounts, sync_contacts):
         for ac in raw_accounts:
             account, created = Account.objects.update_or_create(
-                                             defaults={'sf_id':ac['Id']},
-                                             sf_id=ac['Id'],
-                                             account_name=ac['Name'],
-                                             unqualified=ac['Unqualified__c'],
-                                             cage_code=ac['Cage_Code__c'],
-                                             duns_number=ac['DUNS_Number__c'])
+                                             defaults={'account_name': ac['Name'],
+                                                       'unqualified':ac['Unqualified__c'],
+                                                       'cage_code':ac['Cage_Code__c'],
+                                                       'duns_number':ac['DUNS_Number__c']},
+                                             sf_id=ac['Id'])
             if sync_contacts:
                 self.sync_contacts(account, ac['Contacts'])
 
