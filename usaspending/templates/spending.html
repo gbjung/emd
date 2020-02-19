@@ -1,14 +1,26 @@
-<!DOCTYPE html>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <html class="no-js" lang="en">
   <a href="{% url 'reporting' %}">Report Generator</a>
   <body>
     <h1>USA Spending</h1>
-    <p>Collects data from three fiscal years from given year.</p>
+    <b>Last Run: {{ last_run }}</b>
+    <p>Collects data from three fiscal years from current year.</p>
+    {% if session and not finished %}
+      Currently running: {{ running }}/{{ all }}
+    {% else %}
     <div>
-      <form method="post">{% csrf_token %}
-      {{ form.as_p }}
-      <input type="submit" value="Collect Data">
-      </form>
+      <input id="submission" type="submit" value="Collect Data">
     </div>
-  </body
+    {% endif %}
+  </body>
 </html>
+<script type="text/javascript">
+  $("#submission").on('click', function(e){
+    $.ajax({
+      url: "usaspending",
+      type : "POST",
+      data: {'csrfmiddlewaretoken': '{{ csrf_token }}'}
+    });
+    location.reload(true);
+  })
+</script>

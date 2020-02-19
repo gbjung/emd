@@ -2,7 +2,7 @@ import time
 import requests
 import json
 from datetime import datetime
-
+from accounts.models import Account
 from salesforce.SalesforceClient import SalesforceClient
 
 class USASpendingReporter:
@@ -11,10 +11,11 @@ class USASpendingReporter:
         self.sf = sfc.sf
 
     def find_spending_for_all_clients(self, fiscal_year=datetime.now().year):
-        clients = self.sf.query("SELECT Id FROM Account WHERE (Type='Client')")
-        for client in clients['records']:
-            print(client['Id'])
-            self.find_spending_for_client(client['Id'], fiscal_year)
+        clients = Account.objects.filter(usa_spending_updated=False)
+        for client in clients:
+            self.find_spending_for_client(client.sf_id, fiscal_year)
+            client.usa_spending_updated = True
+            client.save()
 
     def find_spending_for_client(self, sf_id, fiscal_year):
         account_info = self.sf.Account.get(sf_id)
@@ -84,7 +85,7 @@ class USASpendingReporter:
         awards = self.consolidate_awards(response['results'], awards)
 
         if response['page_metadata']["hasNext"]:
-            self.get_spending_info(duns_id, fiscal_year, awards=awards, page=page+1)
+            self.get_spending_info(duns_id, fiscal_years, awards=awards, page=page+1)
 
         return awards
 
