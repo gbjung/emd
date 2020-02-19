@@ -1,7 +1,7 @@
 import datetime
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
-from subprocess import Popen
+from django.conf import settings
 from django.views.generic import TemplateView
 from django.core.management import call_command
 from usaspending.USASpending import USASpendingReporter
@@ -23,14 +23,14 @@ class USASpendingView(TemplateView):
         context['running'] = Account.objects.filter(usa_spending_updated=True).count()
         context['all'] = Account.objects.count()
         context['finished'] = (context['running'] == context['all'])
-        context['last_run'] = open('usaspending.txt', 'r').read()
+        context['last_run'] = open(settings.BASE_DIR + '/usaspending.txt', 'r').read()
         today = datetime.datetime.now().strftime("%D")
         recently_run = (context['last_run'] == today)
         context['session'] = recently_run or (not context["finished"] and context['last_run'])
         return context
 
     def post(self, request, *args, **kwargs):
-        last_run = open('usaspending.txt', 'r').read().strip()
+        last_run = open(settings.BASE_DIR + '/usaspending.txt', 'r').read().strip()
 
         if last_run:
             last_run = datetime.datetime.strptime(last_run, '%m/%d/%y')
@@ -39,7 +39,7 @@ class USASpendingView(TemplateView):
             if datediff > 20:
                 call_command("import_salesforce")
 
-        f = open('usaspending.txt', 'w+')
+        f = open(settings.BASE_DIR + '/usaspending.txt', 'w+')
         f.write(datetime.datetime.now().strftime("%D"))
         f.close()
 
