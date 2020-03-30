@@ -74,7 +74,7 @@ class ReportGenerator:
         where = "(StageName not in ('Monitoring', 'SP 7 - RFP Submitted', 'No Go') and AccountId ='{}')".format(account_id)
         order = " order by CloseDate asc"
         query = "SELECT " + sf_fields + extra_type_fields + " FROM Opportunity WHERE " + where + order
-        return self.sf.query(query)
+        return self.sf.query_all(query)
 
     def add_opportunities(self, sheet, opportunities):
         row = 5
