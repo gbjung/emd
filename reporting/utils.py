@@ -1,4 +1,3 @@
-from unidecode import unidecode
 import re
 
 def escape_sequence_character(text):
