@@ -11,7 +11,7 @@ from dateutil.relativedelta import relativedelta
 from salesforce.SalesforceClient import SalesforceClient
 from openpyxl import load_workbook
 from openpyxl.styles import Border, Side, Font, Alignment
-
+from reporting.utils import escape_sequence_character
 
 class ReportGenerator:
 
@@ -204,26 +204,26 @@ class ReportGenerator:
         return row
 
     def format_op(self, sheet, opp, account_name):
-        sheet['B2'] = opp['Name'] #Opportunity Title
-        sheet['D2'] = account_name #Customer
-        sheet['B4'] = opp['Executive_Summary__c'] #Executive Summary
-        sheet['B5'] = opp['Reasons_to_Pursue__c'] #Reason to Pursue
-        sheet['B6'] = opp['Challenges__c'] # Challenges
-        sheet['B8'] = opp['Client_Role__c'] # Client Role
+        sheet['B2'] = escape_sequence_character(opp['Name']) #Opportunity Title
+        sheet['D2'] = escape_sequence_character(account_name) #Customer
+        sheet['B4'] = escape_sequence_character(opp['Executive_Summary__c']) #Executive Summary
+        sheet['B5'] = escape_sequence_character(opp['Reasons_to_Pursue__c']) #Reason to Pursue
+        sheet['B6'] = escape_sequence_character(opp['Challenges__c']) # Challenges
+        sheet['B8'] = escape_sequence_character(opp['Client_Role__c']) # Client Role
         sheet['B9'] = opp['CloseDate'] # RFP Date
         sheet['B10'] = opp['Projected_Award_Date__c'] # Award Date
         sheet['B11'] = opp['Amount'] # Value
         sheet['B11'].number_format = '"$"#,##0.00'
         sheet['B11'].alignment = Alignment(horizontal='left')
         sheet['B13'] = opp['Contract__c'] # Contract length
-        sheet['B14'] = opp['Competition_Type__c'] # Competition Type
+        sheet['B14'] = escape_sequence_character(opp['Competition_Type__c']) # Competition Type
         if opp['Requirements__c']:
             sheet['B16'] = BeautifulSoup(opp['Requirements__c'], "html.parser").text # Main Requirements
         sheet['D3'] = opp['FBO_Page__c'] # FBO.gov Link
         sheet['D8'] = opp['Contract_Vehicle__c'] # Contract Vehicle
         sheet['D9'] = opp['Place_of_Performance__c'] # Place of Performance
         sheet['D10'] = opp['NAICS_Code__c'] # NAICS Code
-        sheet['D12'] = self.find_incumbent(opp['Incumbent__c']) # Incumbent
+        sheet['D12'] = escape_sequence_character(self.find_incumbent(opp['Incumbent__c'])) # Incumbent
         sheet['D13'] = opp['Contract_End_Date__c'] # Contract End Date
         sheet['D14'] = opp['Eligible_to_Bid__c'] # Eligible to Bid
         if self.use_activities:
@@ -242,7 +242,7 @@ class ReportGenerator:
         for partner in partners['records']:
             sheet['A{}'.format(row)] = partner['Name']
             if partner['Justification__c']:
-                sheet['B{}'.format(row)] = BeautifulSoup(partner['Justification__c'], "html.parser").text.strip()
+                sheet['B{}'.format(row)] = escape_sequence_character(BeautifulSoup(partner['Justification__c'], "html.parser").text.strip())
                 sheet['B{}'.format(row)].border = self.square_border
                 sheet['B{}'.format(row)].alignment = Alignment(wrap_text=True,
                                                                vertical='center',
@@ -291,8 +291,8 @@ class ReportGenerator:
             return row
 
         for activity in activities['records']:
-            sheet['A{}'.format(row)] = activity['Subject']
-            sheet['B{}'.format(row)] = activity['Description']
+            sheet['A{}'.format(row)] = escape_sequence_character(activity['Subject'])
+            sheet['B{}'.format(row)] = escape_sequence_character(activity['Description'])
             sheet['B{}'.format(row)].alignment = Alignment(wrap_text=True,
                                                            vertical='center',
                                                            horizontal='left')
